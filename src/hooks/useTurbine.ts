@@ -429,12 +429,13 @@ export function useTurbine() {
     ocontrol,
     outlinePass,
     hexPass,
+    renderMixins,
     loadGltf,
     loadCSS2DByVue,
     addModelPick,
     addModelHoverPick,
     addOutlineEffect,
-    transitionAnimation,
+    transitionAnimation,    
   } = useThree()
 
   const current = ref('')
@@ -487,10 +488,105 @@ export function useTurbine() {
     const model = gltf.scene;
     console.log('模型加载中')
     model.scale.set(...CONFIG.MODEL_SCALES); // 若没有CONFIG，可直接设置如 model.scale.set(1,1,1)
+    // 创建指定颜色的流动纹理
+  const createColoredFlowTexture = (color: string) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')!
+    canvas.width = 200
+    canvas.height = 50
+    
+    // 绘制渐变条纹（根据输入颜色生成）
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
+    gradient.addColorStop(0, `${color}20`) // 透明度20%
+    gradient.addColorStop(0.5, `${color}80`) // 透明度80%
+    gradient.addColorStop(1, `${color}20`) // 透明度20%
+    
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(5, 1)
+    return texture
+  }
+  
+  // 为三个软管分别创建红、绿、蓝纹理
+  const textures = {
+    '软管1': createColoredFlowTexture('#ff0000'), // 红色
+    '软管2': createColoredFlowTexture('#00ff00'), // 绿色
+    '软管3': createColoredFlowTexture('#0000ff')  // 蓝色
+  }
+  
+  // 存储每个软管的偏移量，实现独立动画速度
+  const flowOffsets = {
+    '软管1': 0,
+    '软管2': 0,
+    '软管3': 0
+  }
+  
+  // 为指定软管添加流动效果
+  model.traverse((child: any) => {
+    // 精确匹配三个软管
+    if (['软管1', '软管2', '软管3'].includes(child.name)) {
+      // 保存原始材质
+      child.originalMaterial = child.material
+      
+      // 应用对应颜色的纹理
+      child.material = new THREE.MeshPhysicalMaterial({
+        color: child.name === '软管1' ? 0xff0000 : 
+               child.name === '软管2' ? 0x00ff00 : 0x0000ff,
+        transparent: true,
+        opacity: 0.7,
+        roughness: 0.6,
+        metalness: 0.2,
+        map: textures[child.name as keyof typeof textures],
+        side: THREE.DoubleSide
+      })
+      
+      // 标记为需要流动动画的对象
+      child.userData.hasFlowAnimation = true
+    }
+  })
+  
+  // 添加动画更新（不同软管可设置不同速度）
+  renderMixins.set('hoseFlow', () => {
+    // 红色软管速度
+    flowOffsets['软管1'] = (flowOffsets['软管1'] + 0.015) % 1
+    textures['软管1'].offset.x = flowOffsets['软管1']
+    
+    // 绿色软管速度（稍慢）
+    flowOffsets['软管2'] = (flowOffsets['软管2'] + 0.01) % 1
+    textures['软管2'].offset.x = flowOffsets['软管2']
+    
+    // 蓝色软管速度（稍快）
+    flowOffsets['软管3'] = (flowOffsets['软管3'] + 0.02) % 1
+    textures['软管3'].offset.x = flowOffsets['软管3']
+  })
+  
     models.device = model;
     model.name = 'device';
     scene.value!.add(model);
-    
+      
+      // 遍历模型子对象，根据名称设置材质
+    model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      // 外壳：半透明玻璃材质
+      if (child.name === '外壳') {
+        child.material = new THREE.MeshStandardMaterial({
+          color: 0xf0f8ff, // 基础白色
+          transparent: true, // 启用透明
+          opacity: 0.12, // 透明度（0-1之间）
+          roughness: 0.1, // 低粗糙度=高反光
+          metalness: 0.2, // 轻微金属感
+          side: THREE.DoubleSide, // 双面可见
+        });
+      }
+
+    }
+  });
+
+  scene.value!.add(model);
     // 加载成功后更新loading状态
     loading.loaded += 1;
     loading.isLoading = false;
