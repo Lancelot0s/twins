@@ -5,12 +5,30 @@
 </template>
 <script setup lang="ts">
 import { LayoutPanel } from '@/layout'
-import { nextTick, onMounted } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'  // 导入onUnmounted
 import { useEcharts } from '@/hooks'
 
 const { container, echarts, setOption } = useEcharts()
 
-const generateOptions = (sources: any[][]) => {
+// 模拟485通信接收的实时数据
+const rawData = ref<number[]>([])
+let updateInterval: number | undefined  // 声明定时器变量
+
+// 生成模拟的485原始数据（修正变量命名）
+const generate485RawData = () => {
+  const count = 50
+  return Array.from({ length: count }, (_, i) => {
+    const base = 1024  // 基准值
+    const fluctuation = Math.sin(i * 0.3) * 100  // 周期性波动（替换"波动"）
+    const noise = (Math.random() - 0.5) * 50  // 随机噪声
+    return Math.round(base + fluctuation + noise)
+  })
+}
+
+// 生成图表配置
+const generateOptions = (data: number[]) => {
+  const xAxisData = data.map((_, index) => index + 1)
+  
   return {
     legend: {
       show: true,
@@ -18,6 +36,7 @@ const generateOptions = (sources: any[][]) => {
       textStyle: {
         color: '#fff',
       },
+      data: ['485原码值']
     },
     tooltip: {
       trigger: 'axis',
@@ -26,117 +45,115 @@ const generateOptions = (sources: any[][]) => {
       textStyle: {
         color: '#fff',
       },
+      formatter: '采样点 {b}: {c}'
     },
     grid: {
-      left: '1%',
-      right: '6%',
-      bottom: '0%',
-      top: '20%',
+      left: '3%',
+      right: '4%',
+      bottom: '10%',
+      top: '15%',
       containLabel: true,
     },
     xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      axisLine: {
-        show: false,
+      type: 'value',
+      name: '采样点ID',
+      nameTextStyle: {
+        color: '#fff'
       },
-      axisTick: {
-        show: false,
+      axisLine: {
+        lineStyle: {
+          color: 'rgba(255, 255, 255, 0.3)'
+        }
       },
       axisLabel: {
         color: '#fff',
-        margin: 20,
-      },
-      data: [
-        '1月',
-        '2月',
-        '3月',
-        '4月',
-        '5月',
-        '6月',
-        '7月',
-        '8月',
-        '9月',
-        '10月',
-        '11月',
-        '12月',
-      ],
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: {
-        color: '#c8c8c8',
+        formatter: '{value}'
       },
       splitLine: {
         lineStyle: {
-          color: '#c8c8c830',
-          type: 'dashed',
-        },
+          color: 'rgba(255, 255, 255, 0.1)'
+        }
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '原码值',
+      nameTextStyle: {
+        color: '#fff'
       },
+      axisLine: {
+        lineStyle: {
+          color: 'rgba(255, 255, 255, 0.3)'
+        }
+      },
+      axisLabel: {
+        color: '#fff'
+      },
+      splitLine: {
+        lineStyle: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        }
+      }
     },
     series: [
       {
-        name: '2024',
+        name: '485原码值',
         type: 'line',
-        symbol: 'none',
-        smooth: true,
+        symbol: 'circle',
+        symbolSize: 5,
+        smooth: false,
         lineStyle: {
           normal: {
             width: 2,
             color: 'rgba(0, 254, 169, 1)',
-          },
+          }
         },
         itemStyle: {
-          color: 'rgba(0, 254, 169, 0.5)',
+          color: 'rgba(0, 254, 169, 0.8)',
+          borderColor: '#fff',
+          borderWidth: 1
         },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            {
-              offset: 0,
-              color: 'rgba(31, 218, 163, 0.4)',
-            },
-            {
-              offset: 1,
-              color: 'rgba(31, 218, 163, 0)',
-            },
-          ]),
-        },
-        data: sources[0],
-      },
-      {
-        name: '2023',
-        type: 'line',
-        symbol: 'none',
-        smooth: true,
-        lineStyle: {
-          normal: {
-            width: 2,
-            color: 'rgba(87, 153, 214, 1)',
-          },
-        },
-        itemStyle: {
-          color: 'rgba(87, 153, 214, 1)',
-        },
-        data: sources[1],
-      },
-    ],
+        data: data.map((value, index) => [xAxisData[index], value])
+      }
+    ]
   }
 }
 
 onMounted(() => {
   nextTick(() => {
-    const sources = [
-      [859, 571, 612, 906, 866, 984, 212, 931, 749, 993, 276, 477],
-      [598, 539, 861, 375, 576, 383, 896, 430, 315, 755, 808, 630],
-    ]
-    const options = generateOptions(sources)
+    rawData.value = generate485RawData()
+    let options = generateOptions(rawData.value)
     setOption(options)
+
+    // 模拟485实时数据更新
+    updateInterval = window.setInterval(() => {  // 使用window.setInterval明确类型
+      const lastIndex = rawData.value.length
+      const base = 1024
+      const fluctuation = Math.sin(lastIndex * 0.3) * 100  // 修正命名
+      const noise = (Math.random() - 0.5) * 50
+      rawData.value.push(Math.round(base + fluctuation + noise))
+      
+      if (rawData.value.length > 50) {
+        rawData.value.shift()
+      }
+      
+      options = generateOptions(rawData.value)
+      setOption(options)
+    }, 1000)
   })
+})
+
+// 修正onUnmounted使用方式（放在setup顶层）
+onUnmounted(() => {
+  if (updateInterval) {
+    clearInterval(updateInterval)  // 清理定时器
+  }
 })
 </script>
 
 <style lang="scss" scoped>
 .container {
+  width: 100%;
   height: 100%;
 }
 </style>

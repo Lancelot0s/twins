@@ -18,100 +18,70 @@
     </div>
   </LayoutPanel>
 </template>
-<script setup lang="ts">
-import { LayoutPanel } from '@/layout'
-import { Random } from 'mockjs'
 
+<script setup lang="ts">
+import { LayoutPanel} from '@/layout'
+import {Random} from 'mockjs'
+
+// 为四个数据项分别设置不同图标
 const source = [
   {
-    icon: 'fa-solid fa-temperature-three-quarters',
-    label: '温度',
-    value: '23',
-    unit: '度',
+    icon: 'fa-solid fa-chart-line', // 折线图图标 - 适合趋势类数据
+    label: '数据1',
+    value: Random.integer(10, 100),
+    unit: '',
     status: Random.pick([true, false]),
   },
   {
-    icon: 'fa-solid fa-umbrella',
-    label: '湿度',
-    value: '70',
-    unit: '%',
+    icon: 'fa-solid fa-bar-chart', // 柱状图图标 - 适合对比类数据
+    label: '数据2',
+    value: Random.integer(10, 100),
+    unit: '',
     status: Random.pick([true, false]),
   },
   {
-    icon: 'fa-solid fa-fan',
-    label: '气压',
-    value: '23',
-    unit: 'kPa',
+    icon: 'fa-solid fa-database', // 数据库图标 - 适合存储类数据
+    label: '数据3',
+    value: Random.integer(10, 100),
+    unit: '',
     status: Random.pick([true, false]),
   },
   {
-    icon: 'fa-solid fa-wind',
-    label: '最大风速',
-    value: '11',
-    unit: 'm/s',
-    status: Random.pick([true, false]),
-  },
-  {
-    icon: 'fa-solid fa-temperature-arrow-up',
-    label: '环境温度',
-    value: '15',
-    unit: '度',
-    status: Random.pick([true, false]),
-  },
-  {
-    icon: 'fa-solid fa-weight-scale',
-    label: '负荷率',
-    value: '23',
-    unit: '%',
-    status: Random.pick([true, false]),
-  },
-  {
-    icon: 'fa-solid fa-plug',
-    label: '总功率',
-    value: '12',
-    unit: 'kVa',
-    status: Random.pick([true, false]),
-  },
-  {
-    icon: 'fa-solid fa-plug',
-    label: '有功功率',
-    value: '12',
-    unit: 'kVa',
-    status: Random.pick([true, false]),
-  },
-  {
-    icon: 'fa-solid fa-plug',
-    label: '无功功率',
-    value: '12',
-    unit: 'kVa',
+    icon: 'fa-solid fa-server', // 服务器图标 - 适合负载类数据
+    label: '数据4',
+    value: Random.integer(10, 100),
+    unit: '',
     status: Random.pick([true, false]),
   },
 ]
 </script>
 
 <style lang="scss" scoped>
+// 保持之前调整的尺寸样式不变
 $emphasize-color: #74f7fd;
+$icon-size: 48px;
+$label-font-size: 16px;
+$value-font-size: 24px;
+$unit-font-size: 16px;
 .container {
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: repeat(3, 1fr);
-  grid-template-columns: repeat(3, 1fr);
-  grid-gap: 10px;
+  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: 15px;
   height: 100%;
-  padding-top: 10px;
-
-  $icon-size: 34px;
+  padding: 15px;
   .item {
     position: relative;
     box-sizing: border-box;
     display: grid;
     grid-template-rows: repeat(2, 1fr);
     grid-template-columns: $icon-size auto;
-    grid-column-gap: 10px;
+    grid-column-gap: 15px;
     align-items: center;
     width: 100%;
     height: 100%;
-    padding: 0 12px;
+    padding: 0 15px;
     overflow: hidden;
     background-color: rgba(93, 101, 122, 20%);
     &.error {
@@ -121,7 +91,6 @@ $emphasize-color: #74f7fd;
         border-radius: 50%;
       }
       .alert {
-        // display: block;
         color: #74fab022;
       }
       .label,
@@ -136,34 +105,37 @@ $emphasize-color: #74f7fd;
       justify-content: center;
       width: $icon-size;
       height: $icon-size;
+      font-size: 28px; // 图标字体大小
       border: 1px solid #fff;
       border-radius: 50%;
     }
     .label {
-      margin-top: 10px;
-      font-size: 13px;
+      margin-top: 15px;
+      font-family: DouyuFont, sans-serif;
+      font-size: $label-font-size;
       color: #999;
       text-align: right;
     }
     .key {
-      margin-bottom: 6px;
-      font-size: 14px;
+      margin-bottom: 10px;
+      font-family: SarasaMonoSC, monospace;
+      font-size: $unit-font-size;
       color: #fff;
       text-align: right;
       .value {
-        margin-right: 6px;
-        font-size: 18px;
+        margin-right: 8px;
+        font-size: $value-font-size;
         font-weight: bold;
       }
       .unit {
-        font-size: 13px;
+        font-size: $unit-font-size;
       }
     }
     .alert {
       position: absolute;
-      top: 10px;
-      right: 10px;
-      font-size: 70px;
+      top: 15px;
+      right: 15px;
+      font-size: 0;
       color: #ffffff09;
     }
   }

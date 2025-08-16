@@ -7,10 +7,10 @@
           v-for="{ name, status, time } in list"
           :class="{ error: status === 0 }"
         >
-          <div class="item-circle"></div>
+          <!-- <div class="item-circle"></div>
           <div class="item-name">{{ name }}</div>
           <div class="item-type">{{ status ? '正常' : '部件异常' }}</div>
-          <div class="item-time">{{ time }}</div>
+          <div class="item-time">{{ time }}</div> -->
         </div>
       </div>
     </div>

@@ -165,13 +165,26 @@ export function useThree() {
   }
   //加载 GLTF/GLB 模型
   const loadGltf = (url: string): Promise<GLTF> => {
-    const loader = new GLTFLoader()
-    loader.setDRACOLoader(dracoLoader)
-    const onCompleted = (object: GLTF, resolve: any) => resolve(object)
-    return new Promise<GLTF>((resolve) => {
-      loader.load(url, (object: GLTF) => onCompleted(object, resolve))
-    })
-  }
+  const loader = new GLTFLoader()
+  loader.setDRACOLoader(dracoLoader)
+  
+  // 新增错误回调，确保错误能被捕获
+  return new Promise<GLTF>((resolve, reject) => {
+    loader.load(
+      url,
+      (gltf) => resolve(gltf), // 成功
+      (xhr) => {
+        // 新增加载进度提示
+        console.log(`加载进度: ${(xhr.loaded / xhr.total) * 100}%`)
+      },
+      (error) => {
+        // 强制输出错误信息
+        console.error('GLTF加载错误:', error)
+        reject(error) // 关键：将错误抛出
+      }
+    )
+  })
+}
   //加载动画混合器(用于启动模型自带的动画)
   const loadAnimationMixer = (
     mesh: THREE.Mesh | THREE.AnimationObjectGroup | THREE.Group,

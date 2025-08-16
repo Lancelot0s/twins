@@ -1,28 +1,30 @@
 <template>
   <div class="layout-header">
     <div class="header-midden">
-      <div class="cn">大型风力发电机监控平台</div>
-      <div class="en">Large Wind Turbine Monitoring Platform</div>
+      <div class="cn">气液分离装置仿真系统</div>
+      <div class="en">Gas-Liquid Separation Device Simulation System</div>
     </div>
     <div class="header-left">
-      <i class="fa-regular fa-envelope"></i>
+      <!-- 吉林大学图标 -->
+      <div class="jlu-icon">
+        <img src="@/assets/images/jlu-logo.png" alt="吉林大学" />
+      </div>
       <div
         class="message"
-        content="【系统通知】感谢大家对我们项目的关注与支持!希望能为我们的项目点一个Star,您的支持对我们来说至关重要。"
+        content="吉林大学威海仿生研究院"
       ></div>
     </div>
     <div class="header-right">
       <span>{{ state.time }}</span>
       <span>{{ state.date }}</span>
       <span>{{ state.week }}</span>
-      <span>13°c</span>
     </div>
   </div>
 </template>
 <script setup lang="ts">
 import { reactive, onMounted, onUnmounted } from 'vue'
 import dayjs from 'dayjs'
-//时间 日期 星期 温度
+
 const state = reactive({
   time: '--:--:--',
   date: '--/--/--',
@@ -39,15 +41,13 @@ const updateState = () => {
 let interval: any
 
 onMounted(() => {
-  updateState() // 初始化时间
-  interval = setInterval(updateState, 1000) // 每秒更新
+  updateState()
+  interval = setInterval(updateState, 1000)
 })
 
 onUnmounted(() => {
-  clearInterval(interval) // 清理定时器
+  clearInterval(interval)
 })
-// interface PropsType {}
-// const props = defineProps<PropsType>()
 </script>
 <style lang="scss" scoped>
 @mixin font-color() {
@@ -86,7 +86,6 @@ onUnmounted(() => {
     position: absolute;
     bottom: -55px;
     left: 500px;
-    width: 100%;
     width: 500px;
     height: 100px;
     content: '';
@@ -117,23 +116,33 @@ onUnmounted(() => {
   }
   .header-left {
     position: absolute;
-    top: 20px;
+    top: 10px;
     left: 30px;
     display: flex;
-    grid-gap: 6px;
+    gap: 10px; /* 图标和文字间距 */
     align-items: center;
     font-size: 18px;
     color: #fff;
+    
+    // 吉林大学图标样式
+    .jlu-icon {
+      width: 50px; /* 根据实际图标大小调整 */
+      height: 50px;
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    }
     .message {
       display: flex;
       width: 400px;
       overflow: hidden;
-      font-size: 16px;
+      font-size: 25px;
       &::after {
         width: auto;
         text-wrap: nowrap;
         content: attr(content);
-        animation: text-roll 20s linear infinite;
         @include font-color;
       }
     }
@@ -143,8 +152,8 @@ onUnmounted(() => {
     top: 20px;
     right: 30px;
     display: flex;
-    grid-gap: 20px;
-    font-size: 16px;
+    gap: 20px;
+    font-size: 25px;
     color: #fff;
     span {
       position: relative;

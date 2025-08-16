@@ -1,86 +1,48 @@
+<!-- 修改 src/layout/LayoutFooter.vue -->
 <template>
   <div class="layout-footer">
-    <div class="item" :style="warningStyle" @click="warningHandle">
-      {{ state.isWarning ? '取消告警' : '设备告警' }}
-    </div>
-    <div class="item" :style="decomposeStyle" @click="decomposeHandle">
-      {{ !state.isDecompose ? '设备拆解' : '设备组装' }}
+    <div class="item" :style="detectionStyle" @click="detectionHandle">
+      {{ state.isDetecting ? '关闭检测' : '开始检测' }}
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
-import { reactive, computed, inject } from 'vue'
+import { reactive, computed } from 'vue'
 
 const state = reactive({
-  isWarning: false,
-  isDecompose: false,
-  isDecomposeRuning: false,
+  isDetecting: false, // 检测状态
 })
 
-const events = inject<any>('events')
-
-const warningHandle = async () => {
-  // if (state.isDecompose) return void 0
-  state.isWarning = !state.isWarning
-
-  if (state.isWarning) {
-    await events.startWarning()
-
-    // events.equipmentDisassembleAnimation()
+// 检测按钮点击事件
+const detectionHandle = () => {
+  state.isDetecting = !state.isDetecting
+  // 具体检测逻辑待后续实现
+  if (state.isDetecting) {
+    // 开始检测逻辑
+    console.log('开始检测')
   } else {
-    await events.stopWarning()
-
-    // events.equipmentCombineAnimation()
+    // 关闭检测逻辑
+    console.log('关闭检测')
   }
 }
 
-const decomposeHandle = async () => {
-  // if (state.isWarning) return void 0
-  if (state.isDecomposeRuning) return void 0
-  state.isDecompose = !state.isDecompose
-  state.isDecomposeRuning = true
-  if (state.isDecompose) {
-    await events.eqDecomposeAnimation()
-    state.isDecomposeRuning = false
-  } else {
-    await events.eqComposeAnimation()
-    state.isDecomposeRuning = false
+// 检测按钮样式
+const detectionStyle = computed(() => {
+  const style: any = {
+    cursor: 'pointer'
   }
-}
-
-const warningStyle = computed(() => {
-  const style: any = {}
-  if (state.isDecompose) {
-    // style.cursor = 'not-allowed'
-    style.cursor = 'pointer'
+  
+  if (state.isDetecting) {
+    style.color = '#5bc7fa' // 激活状态颜色
   } else {
-    style.cursor = 'pointer'
+    style.color = '#fff' // 默认状态颜色
   }
-
-  if (state.isWarning) {
-    style.color = '#5bc7fa'
-  } else {
-    style.color = '#fff'
-  }
-  return style
-})
-
-const decomposeStyle = computed(() => {
-  const style: any = {}
-  if (state.isDecomposeRuning) {
-    style.cursor = 'not-allowed'
-  } else {
-    style.cursor = 'pointer'
-  }
-
-  if (state.isDecompose) {
-    style.color = '#5bc7fa'
-  } else {
-    style.color = '#fff'
-  }
+  
   return style
 })
 </script>
+
 <style lang="scss" scoped>
 .layout-footer {
   position: absolute;
