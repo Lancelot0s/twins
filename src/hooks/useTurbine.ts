@@ -479,8 +479,7 @@ export function useTurbine() {
     })
   }
 
-  // 简化模型加载，只加载目标模型
-  const loadModels = async () => {
+const loadModels = async () => {
   try {
     // 只加载 device.glb 模型
     console.log('模型加载开始')
@@ -488,105 +487,88 @@ export function useTurbine() {
     const model = gltf.scene;
     console.log('模型加载中')
     model.scale.set(...CONFIG.MODEL_SCALES); // 若没有CONFIG，可直接设置如 model.scale.set(1,1,1)
-    // 创建指定颜色的流动纹理
-  const createColoredFlowTexture = (color: string) => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')!
-    canvas.width = 200
-    canvas.height = 50
     
-    // 绘制渐变条纹（根据输入颜色生成）
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
-    gradient.addColorStop(0, `${color}20`) // 透明度20%
-    gradient.addColorStop(0.5, `${color}80`) // 透明度80%
-    gradient.addColorStop(1, `${color}20`) // 透明度20%
+    // 加载三种颜色的流动纹理贴图
+    const textureLoader = new THREE.TextureLoader();
     
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    // 为三个软管分别加载红、绿、蓝纹理
+    const textures = {
+      '软管1': await loadTexture(textureLoader, '/textures/red_flow.png', 8),  // 重复8次
+      '软管2': await loadTexture(textureLoader, '/textures/green_flow.png', 8),// 重复8次
+      '软管3': await loadTexture(textureLoader, '/textures/blue_flow.png', 8)  // 重复8次
+    };
     
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(5, 1)
-    return texture
-  }
-  
-  // 为三个软管分别创建红、绿、蓝纹理
-  const textures = {
-    '软管1': createColoredFlowTexture('#ff0000'), // 红色
-    '软管2': createColoredFlowTexture('#00ff00'), // 绿色
-    '软管3': createColoredFlowTexture('#0000ff')  // 蓝色
-  }
-  
-  // 存储每个软管的偏移量，实现独立动画速度
-  const flowOffsets = {
-    '软管1': 0,
-    '软管2': 0,
-    '软管3': 0
-  }
-  
-  // 为指定软管添加流动效果
-  model.traverse((child: any) => {
-    // 精确匹配三个软管
-    if (['软管1', '软管2', '软管3'].includes(child.name)) {
-      // 保存原始材质
-      child.originalMaterial = child.material
+    // 存储每个软管的偏移量，实现独立动画速度
+    const flowOffsets = {
+      '软管1': 0,
+      '软管2': 0,
+      '软管3': 0
+    };
+    
+    // 为指定软管添加流动效果
+    model.traverse((child: any) => {
+      // 精确匹配三个软管
+      if (['软管1', '软管2', '软管3'].includes(child.name)) {
+        // 保存原始材质
+        child.originalMaterial = child.material;
+        
+        // 获取对应颜色的纹理
+        const texture = textures[child.name as keyof typeof textures];
+        
+        // 应用纹理材质
+        child.material = new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,  // 白色基础色，让纹理颜色完全显示
+          transparent: true,
+          opacity: 0.8,
+          roughness: 0.4,
+          metalness: 0.1,
+          map: texture,
+          side: THREE.DoubleSide
+        });
+        
+        // 标记为需要流动动画的对象
+        child.userData.hasFlowAnimation = true;
+      }
+    });
+    
+    // 添加动画更新（不同软管可设置不同速度）
+    renderMixins.set('hoseFlow', () => {
+      // 红色软管速度
+      flowOffsets['软管1'] = (flowOffsets['软管1'] + 0.005) % 1;
+      textures['软管1'].offset.x = flowOffsets['软管1'];
       
-      // 应用对应颜色的纹理
-      child.material = new THREE.MeshPhysicalMaterial({
-        color: child.name === '软管1' ? 0xff0000 : 
-               child.name === '软管2' ? 0x00ff00 : 0x0000ff,
-        transparent: true,
-        opacity: 0.7,
-        roughness: 0.6,
-        metalness: 0.2,
-        map: textures[child.name as keyof typeof textures],
-        side: THREE.DoubleSide
-      })
+      // 绿色软管速度（稍慢）
+      flowOffsets['软管2'] = (flowOffsets['软管2'] + 0.001) % 1;
+      textures['软管2'].offset.x = flowOffsets['软管2'];
       
-      // 标记为需要流动动画的对象
-      child.userData.hasFlowAnimation = true
-    }
-  })
-  
-  // 添加动画更新（不同软管可设置不同速度）
-  renderMixins.set('hoseFlow', () => {
-    // 红色软管速度
-    flowOffsets['软管1'] = (flowOffsets['软管1'] + 0.015) % 1
-    textures['软管1'].offset.x = flowOffsets['软管1']
+      // 蓝色软管速度（稍快）
+      flowOffsets['软管3'] = (flowOffsets['软管3'] + 0.001) % 1;
+      textures['软管3'].offset.x = flowOffsets['软管3'];
+    });
     
-    // 绿色软管速度（稍慢）
-    flowOffsets['软管2'] = (flowOffsets['软管2'] + 0.01) % 1
-    textures['软管2'].offset.x = flowOffsets['软管2']
-    
-    // 蓝色软管速度（稍快）
-    flowOffsets['软管3'] = (flowOffsets['软管3'] + 0.02) % 1
-    textures['软管3'].offset.x = flowOffsets['软管3']
-  })
-  
     models.device = model;
     model.name = 'device';
     scene.value!.add(model);
       
-      // 遍历模型子对象，根据名称设置材质
+    // 遍历模型子对象，设置外壳材质
     model.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      // 外壳：半透明玻璃材质
-      if (child.name === '外壳') {
-        child.material = new THREE.MeshStandardMaterial({
-          color: 0xf0f8ff, // 基础白色
-          transparent: true, // 启用透明
-          opacity: 0.12, // 透明度（0-1之间）
-          roughness: 0.1, // 低粗糙度=高反光
-          metalness: 0.2, // 轻微金属感
-          side: THREE.DoubleSide, // 双面可见
-        });
+      if (child instanceof THREE.Mesh) {
+        // 外壳：半透明玻璃材质
+        if (child.name === '外壳'||child.name === '内部外壳') {
+          child.material = new THREE.MeshStandardMaterial({
+            color: 0xf0f8ff, // 基础白色
+            transparent: true, // 启用透明
+            depthWrite:false,
+            opacity: 0.1, // 透明度（0-1之间）
+            roughness: 0.1, // 低粗糙度=高反光
+            metalness: 0.2, // 轻微金属感
+            side: THREE.DoubleSide, // 双面可见
+          });
+        }
       }
+    });
 
-    }
-  });
-
-  scene.value!.add(model);
+    scene.value!.add(model);
     // 加载成功后更新loading状态
     loading.loaded += 1;
     loading.isLoading = false;
@@ -598,8 +580,40 @@ export function useTurbine() {
     loading.isLoading = false;
     // 可选：显示错误提示
   }
-  };
+};
 
+const loadTexture = (
+  loader: THREE.TextureLoader, 
+  url: string, 
+  repeatX: number = 8  // 新增：控制X方向重复次数，默认8次
+): Promise<THREE.Texture> => {
+  return new Promise((resolve, reject) => {
+    loader.load(
+      url,
+      (texture) => {
+        // 1. 允许纹理在两个方向重复
+        texture.wrapS = THREE.RepeatWrapping;  // 水平方向（流动方向）
+        texture.wrapT = THREE.RepeatWrapping;  // 垂直方向（管子周长方向）
+        
+        // 2. 关键调整：设置重复次数
+        // repeatX：水平方向重复次数（值越大，同长度内显示的贴图越多，越密集）
+        // 第二个参数：垂直方向重复次数（根据管子周长调整，1即可）
+        texture.repeat.set(repeatX, 1);
+        
+        // 3. 可选：设置纹理过滤方式，避免小模型贴图模糊
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        
+        resolve(texture);
+      },
+      undefined,
+      (error) => {
+        console.error(`纹理加载失败 ${url}:`, error);
+        reject(error);
+      }
+    );
+  });
+};
   // 保留灯光设置
   const loadLights = () => {
     const LIGHT_LIST = [
@@ -609,7 +623,7 @@ export function useTurbine() {
       [100, 100, -100],
     ]
     LIGHT_LIST.forEach(([x, y, z]) => {
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 5)
+      const directionalLight = new THREE.DirectionalLight(0xfffccc, 1)
       directionalLight.position.set(x, y, z)
       scene.value?.add(directionalLight)
     })
