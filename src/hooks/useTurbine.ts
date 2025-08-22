@@ -10,7 +10,7 @@ const CONFIG = {
     EQUIPMENT: `${import.meta.env.VITE_API_DOMAIN}/models/equipment.glb`,
     PLANE: `${import.meta.env.VITE_API_DOMAIN}/models/plane.glb`,
     SKELETON: `${import.meta.env.VITE_API_DOMAIN}/models/skeleton.glb`,
-    DEVICE: `${import.meta.env.VITE_API_DOMAIN}/models/device2.glb`,
+    DEVICE: `${import.meta.env.VITE_API_DOMAIN}/models/device3.glb`,
   },
   MODEL_SCALES: [0.0001 * 3, 0.0001 * 3, 0.0001 * 3],
   EQUIPMENT_POSITION: {
@@ -220,7 +220,7 @@ const CONFIG = {
 //         },
 //       })
 
-//       //可以每个部件创建一个动画，这里为了更好控制进程避免使用settimeout，只使用一个动画(更麻烦)
+//       //可以每个部件创建一个动画，这里为了更好控制入程避免使用settimeout，只使用一个动画(更麻烦)
 //       const from: any = {}
 //       const to: any = {}
 
@@ -488,63 +488,100 @@ const loadModels = async () => {
     console.log('模型加载中')
     model.scale.set(...CONFIG.MODEL_SCALES); // 若没有CONFIG，可直接设置如 model.scale.set(1,1,1)
     
-    // 加载三种颜色的流动纹理贴图
-    const textureLoader = new THREE.TextureLoader();
+// 加载三种颜色的流动纹理贴图
+const textureLoader = new THREE.TextureLoader();
+
+// 为不同类型管道分别加载纹理
+const textures = {
+  '出水管': await loadTexture(textureLoader, '/textures/red_flow.png', 8),   // 出水管使用红色
+  '入水管': await loadTexture(textureLoader, '/textures/green_flow.png', 8), // 入水管使用绿色
+  '出气管': await loadTexture(textureLoader, '/textures/blue_flow.png', 8)   // 出气管使用蓝色
+};
+
+// 存储每个管道的偏移量，实现顺序流动效果
+const flowOffsets = {
+  // 出水管系列（3个）
+  '出水管-1': 0,
+  '出水管-2': 0,
+  '出水管-3': 0,
+  
+  // 入水管系列（4个）
+  '入水管-1': 0,
+  '入水管-2': 0,
+  '入水管-3': 0,
+  '入水管-4': 0,
+  
+  // 出气管系列（3个）
+  '出气管-1': 0,
+  '出气管-2': 0,
+  '出气管-3': 0
+};
+
+// 为指定管道添加流动效果
+model.traverse((child: any) => {
+  // 匹配所有管道名称
+  const pipePattern = /^(出水管|入水管|出气管)-\d+$/;
+  if (pipePattern.test(child.name)) {
+    // 保存原始材质
+    child.originalMaterial = child.material;
     
-    // 为三个软管分别加载红、绿、蓝纹理
-    const textures = {
-      '软管1': await loadTexture(textureLoader, '/textures/red_flow.png', 8),  // 重复8次
-      '软管2': await loadTexture(textureLoader, '/textures/green_flow.png', 8),// 重复8次
-      '软管3': await loadTexture(textureLoader, '/textures/blue_flow.png', 8)  // 重复8次
-    };
+    // 提取管道类型（去除编号部分）
+    const pipeType = child.name.split('-')[0];
     
-    // 存储每个软管的偏移量，实现独立动画速度
-    const flowOffsets = {
-      '软管1': 0,
-      '软管2': 0,
-      '软管3': 0
-    };
+    // 获取对应类型的纹理
+    const texture = textures[pipeType as keyof typeof textures];
     
-    // 为指定软管添加流动效果
-    model.traverse((child: any) => {
-      // 精确匹配三个软管
-      if (['软管1', '软管2', '软管3'].includes(child.name)) {
-        // 保存原始材质
-        child.originalMaterial = child.material;
-        
-        // 获取对应颜色的纹理
-        const texture = textures[child.name as keyof typeof textures];
-        
-        // 应用纹理材质
-        child.material = new THREE.MeshPhysicalMaterial({
-          color: 0xffffff,  // 白色基础色，让纹理颜色完全显示
-          transparent: true,
-          opacity: 0.8,
-          roughness: 0.4,
-          metalness: 0.1,
-          map: texture,
-          side: THREE.DoubleSide
-        });
-        
-        // 标记为需要流动动画的对象
-        child.userData.hasFlowAnimation = true;
-      }
+    // 应用纹理材质
+    child.material = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,  // 白色基础色，让纹理颜色完全显示
+      transparent: true,
+      opacity: 0.8,
+      roughness: 0.4,
+      metalness: 0.1,
+      map: texture,
+      side: THREE.DoubleSide
     });
     
-    // 添加动画更新（不同软管可设置不同速度）
-    renderMixins.set('hoseFlow', () => {
-      // 红色软管速度
-      flowOffsets['软管1'] = (flowOffsets['软管1'] + 0.005) % 1;
-      textures['软管1'].offset.x = flowOffsets['软管1'];
-      
-      // 绿色软管速度（稍慢）
-      flowOffsets['软管2'] = (flowOffsets['软管2'] + 0.001) % 1;
-      textures['软管2'].offset.x = flowOffsets['软管2'];
-      
-      // 蓝色软管速度（稍快）
-      flowOffsets['软管3'] = (flowOffsets['软管3'] + 0.001) % 1;
-      textures['软管3'].offset.x = flowOffsets['软管3'];
-    });
+    // 标记为需要流动动画的对象
+    child.userData.hasFlowAnimation = true;
+  }
+});
+
+// 添加动画更新（实现同类型管道按编号顺序流动）
+renderMixins.set('pipeFlow', () => {
+  // 出水管系列（出水管-1 → 出水管-2 → 出水管-3 方向流动）
+  // 使用相位偏移实现顺序流动效果
+  const outletPhase = 0.005;
+  flowOffsets['出水管-1'] = (flowOffsets['出水管-1'] + outletPhase) % 1;
+  flowOffsets['出水管-2'] = (flowOffsets['出水管-1'] + 0.2) % 1;  // 滞后于-1
+  flowOffsets['出水管-3'] = (flowOffsets['出水管-2'] + 0.2) % 1;  // 滞后于-2
+  
+  textures['出水管'].offset.x = flowOffsets['出水管-1'];
+  textures['出水管'].offset.x = flowOffsets['出水管-2'];
+  textures['出水管'].offset.x = flowOffsets['出水管-3'];
+  
+  // 入水管系列（入水管-1 → 入水管-2 → 入水管-3 → 入水管-4 方向流动）
+  const inletPhase = 0.004;
+  flowOffsets['入水管-1'] = (flowOffsets['入水管-1'] + inletPhase) % 1;
+  flowOffsets['入水管-2'] = (flowOffsets['入水管-1'] + 0.15) % 1;
+  flowOffsets['入水管-3'] = (flowOffsets['入水管-2'] + 0.15) % 1;
+  flowOffsets['入水管-4'] = (flowOffsets['入水管-3'] + 0.15) % 1;
+  
+  textures['入水管'].offset.x = flowOffsets['入水管-1'];
+  textures['入水管'].offset.x = flowOffsets['入水管-2'];
+  textures['入水管'].offset.x = flowOffsets['入水管-3'];
+  textures['入水管'].offset.x = flowOffsets['入水管-4'];
+  
+  // 出气管系列（出气管-1 → 出气管-2 → 出气管-3 方向流动）
+  const gasPhase = 0.006;
+  flowOffsets['出气管-1'] = (flowOffsets['出气管-1'] + gasPhase) % 1;
+  flowOffsets['出气管-2'] = (flowOffsets['出气管-1'] + 0.2) % 1;
+  flowOffsets['出气管-3'] = (flowOffsets['出气管-2'] + 0.2) % 1;
+  
+  textures['出气管'].offset.x = flowOffsets['出气管-1'];
+  textures['出气管'].offset.x = flowOffsets['出气管-2'];
+  textures['出气管'].offset.x = flowOffsets['出气管-3'];
+});
     
     models.device = model;
     model.name = 'device';
