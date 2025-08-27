@@ -24,6 +24,11 @@
 <script setup lang="ts">
 import { reactive, onMounted, onUnmounted } from 'vue'
 import dayjs from 'dayjs'
+// 导入中文语言包
+import 'dayjs/locale/zh-cn'
+
+// 设置dayjs使用中文本地化
+dayjs.locale('zh-cn')
 
 const state = reactive({
   time: '--:--:--',
@@ -35,6 +40,7 @@ const updateState = () => {
   const today = dayjs()
   state.time = today.format('HH:mm:ss')
   state.date = today.format('MM/DD/YYYY')
+  // 使用本地化后的星期格式，会自动显示为中文
   state.week = today.format('dddd')
 }
 
@@ -46,7 +52,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  clearInterval(interval)
+  if (interval) {
+    clearInterval(interval)
+  }
 })
 </script>
 <style lang="scss" scoped>
